@@ -1,7 +1,7 @@
 package com.example.animatecat.interpolarCustom;
 
 public class MyBounceInterpolator implements android.view.animation.Interpolator {
-    private double mAmplitude = 1;
+    private double mAmplitude = 2;
     private double mFrequency = 10;
 
     public MyBounceInterpolator() {
