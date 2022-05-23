@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float flCatWidth;
     private MyAccelerateInterpolar myAccelerateInterpolar;
     private MyBounceInterpolator myFirstBounceInterpolator;
-    private MyBounceInterpolator myFirstSecondInterpolator;
+    private MyBounceInterpolator mySecondInterpolator;
     private int intPreviousInclination;
     private int intCurrentInclination;
     private float flMoveToDistance;
@@ -263,10 +263,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         if(animator.getInterpolator()== myFirstBounceInterpolator){
             Toast.makeText(this, "dine", Toast.LENGTH_SHORT).show();
-            myFirstSecondInterpolator =new MyBounceInterpolator();
-            float transX = myFirstSecondInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,false);
-            float transY = myFirstSecondInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransY(),flScreenHeight,false);
-            ivCat.animate().setInterpolator(myFirstSecondInterpolator);
+            mySecondInterpolator =new MyBounceInterpolator();
+            float transX = mySecondInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,false);
+            float transY = mySecondInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransY(),flScreenHeight,false);
+            ivCat.animate().setInterpolator(mySecondInterpolator);
             ivCat.animate().translationXBy(transX);
             ivCat.animate().translationYBy(transY);
             ivCat.animate().setDuration(1000);

@@ -28,5 +28,6 @@ public class MyAccelerateInterpolar implements android.view.animation.Interpolat
 
     public float getTransY() {
         return transY;
+
     }
 }
