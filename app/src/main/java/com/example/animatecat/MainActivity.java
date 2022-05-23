@@ -59,8 +59,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     //donnees
     private MovingCat movingCat;
     private Bitmap bitmapCat;
-    private float flPositionX;
-    private float flPositionY;
     private float flScreenHeight;
     private float flScreenWidth;
     private float flCatHeight;
@@ -71,13 +69,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int intCurrentInclination;
     private float flMoveToDistance;
     private static final int CAT_LEFT=0;
+    private static final int CAT_TOP=0;
     private int intCatRight;
+    private int intCatBottom;
     private Toast toastCatEdge;
     private boolean boolCatEdge;
     private boolean booldCatLoaded;
     Timer timer;
     private boolean boolTimerTilt;
     private boolean boolAngleChanged;
+    private boolean boolCatAnimated;
+    private boolean boolBounceInterpolar;
+
+    //test
+    int translation;
+    int droite;
+    float gauche;
+    float fcty;
+
 
 
 
@@ -127,6 +136,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         boolAngleChanged =false;
         boolTimerTilt=false;
+        boolCatAnimated=false;
+        boolBounceInterpolar=false;
 
     }
 
@@ -162,53 +173,52 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double norm_Of_g;
         float z_normalise;
 
-        if(booldCatLoaded) {
+        if(booldCatLoaded&&boolBounceInterpolar==false) {
 
             // Recuperer angle
             norm_Of_g = Math.sqrt(sensorEvent.values[0] * sensorEvent.values[0] + sensorEvent.values[1] * sensorEvent.values[1] + sensorEvent.values[2] * sensorEvent.values[2]);
             // Pour rester dans le plan x,y
             z_normalise = (float) (sensorEvent.values[2] / norm_Of_g);
-            intCurrentInclination = (int) Math.round(Math.toDegrees(Math.acos(z_normalise)) / 15) * 15;
+            intCurrentInclination = (int) Math.round(Math.toDegrees(Math.acos(z_normalise)) / 5) * 5;
 
-            // Si ecran penche vers gauche ou vers haut
-            if (sensorEvent.values[0] > 0) {
-                intCurrentInclination =-intCurrentInclination;
-            }
 
-            if ((intCurrentInclination != intPreviousInclination) && intCurrentInclination != 0) {
+
+            if ((intCurrentInclination != intPreviousInclination)) {
                 boolAngleChanged =true;
 
                 if (boolTimerTilt == true) {
 
-                    Log.w("nia","pos_y "+ivCat.getY());
-
-                    boolTimerTilt=false;
-
-                    boolAngleChanged =false;
-
-                    bt.setText("ANGLE");
-
-                    flPositionX = ivCat.getX();
-
-                    myAccelerateInterpolar = new MyAccelerateInterpolar(Math.abs(intCurrentInclination) / 10f);
-
-                    if (sensorEvent.values[0] < 0) {
-                        flMoveToDistance = flScreenWidth - flPositionX - flCatWidth;
-                        ivCat.animate().translationXBy(flMoveToDistance);
-
-                    } else {
-                        flMoveToDistance = flPositionX;
-                        ivCat.animate().translationXBy(-flMoveToDistance);
+                    if((intCurrentInclination==0)&&boolCatAnimated==true){
+                        ivCat.animate().cancel();
+                        boolCatAnimated=false;
                     }
+                    else if(intCurrentInclination!=0) {
 
-                    //iv_cat.animate().rotationBy(200);
+                        boolTimerTilt = false;
 
-                    ivCat.animate().setInterpolator(myAccelerateInterpolar);
-                    ivCat.animate().start();
-                    intPreviousInclination = intCurrentInclination;
+                        boolAngleChanged = false;
+
+                        boolCatAnimated = true;
+
+                        bt.setText("ANGLE");
+
+                        float[] tabPixelsTranslation = getPixelsTranslations(sensorEvent.values[0], sensorEvent.values[1], ivCat.getX(), ivCat.getY());
+                        ivCat.animate().translationYBy(tabPixelsTranslation[1]);
+                        ivCat.animate().translationXBy(tabPixelsTranslation[0]);
+
+
+                        myAccelerateInterpolar = new MyAccelerateInterpolar(Math.abs(intCurrentInclination) * 0.1f,tabPixelsTranslation[0],tabPixelsTranslation[1]);
+
+                        int duration = (int) (10000 / Math.abs(intCurrentInclination));
+
+                        ivCat.animate().setDuration(duration);
+                        ivCat.animate().setInterpolator(myAccelerateInterpolar);
+                        ivCat.animate().start();
+                        intPreviousInclination = intCurrentInclination;
+                    }//else if(intCurrentInclination==0)
                 } //if(boolTiltTimer) true
-
-            }//intCurrentInclination != intPreviousInclination) && intCurrentInclination != 0
+//
+            }//intCurrentInclination != intPreviousInclination)
         }//if(booldCatLoaded)
     }
 
@@ -222,14 +232,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     //TESSSST
     public void onClick(View view) {
 
-        flPositionX = (int) ivCat.getX();
-        flCatWidth = ivCat.getWidth();
+        //flPositionY = (int) ivCat.getY();
+        flCatHeight = ivCat.getHeight();
         MyAccelerateInterpolar lala = new MyAccelerateInterpolar();
-        //int move_distance= screen_width-positionX-cat_width;
+       //int move_distance= (int) (flScreenHeight-flPositionY-flCatHeight*2);
         //move_distance= positionX;
-        ivCat.animate().translationXBy((float) (100));
+        //ivCat.animate().translationYBy((float) (move_distance));
         ivCat.animate().setInterpolator(lala);
         ivCat.animate().start();
+
 
 
 
@@ -248,14 +259,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @SuppressLint("ResourceAsColor")
     @Override
     public void onAnimationEnd(Animator animator) {
-        // scream cat
-        // si bord
+        float posX = ivCat.getX();
+        float posY = ivCat.getY();
 
-//        if(ivCat.getAnimation().getInterpolator()== myAccelerateInterpolar){
-//            int intPositionX= (int) ivCat.getX();
-//            bt.setText("FINI");
-//            Log.w("tag", intCurrentInclination +" inclinaison");
-//
+        if(animator.getInterpolator()==myBounceInterpolator){
+            boolBounceInterpolar=false;
+        }
+
+        if(animator.getInterpolator()==myAccelerateInterpolar){
+            if(posX==CAT_LEFT||posX==intCatRight||posY==intCatBottom||posY==CAT_TOP){
+                boolBounceInterpolar = true;
+                myBounceInterpolator=new MyBounceInterpolator();
+                float transX = myBounceInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,true);
+                float transY = myBounceInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransY(),flScreenHeight,true);
+                ivCat.animate().translationXBy(transX);
+                ivCat.animate().translationYBy(transY);
+                ivCat.animate().setDuration(10000 / Math.abs(intCurrentInclination));
+                ivCat.animate().start();
+            }
+
+        }
 //            if((intPositionX==CAT_LEFT || intPositionX== intCatRight)&&!boolCatEdge){
 //                toastCatEdge.show();
 //                boolCatEdge =true;
@@ -285,8 +308,96 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onGlobalLayout() {
         flCatWidth = ivCat.getWidth();
+        flCatHeight=ivCat.getHeight();
         ivCat.getViewTreeObserver().removeOnGlobalLayoutListener(this);
         intCatRight = (int) (flScreenWidth - flCatWidth);
+        intCatBottom= (int) (flScreenHeight - flCatHeight*2);
         booldCatLoaded =true;
     }
+
+    public float[] getPixelsTranslations(float ax, float ay,float posX,float posY){
+        float[] tab_pixels_translation = new float[2];
+        float abs_ax=Math.abs(ax);
+        float abs_ay=Math.abs(ay);
+        float val;
+
+        if(abs_ax<abs_ay){
+
+            if(ay>0){
+                tab_pixels_translation[1]= flScreenHeight-posY-flCatHeight*2;
+
+            }
+            else if(ay<0){
+                tab_pixels_translation[1]=  -posY;
+            }
+            val= Math.abs(tab_pixels_translation[1])*abs_ax/abs_ay;
+            tab_pixels_translation[0]=  val;
+            if(ax>0) {
+                if(val>=posX){
+                    tab_pixels_translation[0]=-posX;
+                }
+                else tab_pixels_translation[0]=-val;
+
+            }
+            else if(ax<0){
+                if((posX+val)>=intCatRight){
+                    tab_pixels_translation[0]= flScreenWidth-posX-flCatWidth;
+                }
+                else tab_pixels_translation[0]=val;
+            }
+            else tab_pixels_translation[0]=val;
+        }
+        else if(abs_ax>abs_ay){
+            if(ax>0){
+                tab_pixels_translation[0]= -posX;
+            }
+            if(ax<0){
+                tab_pixels_translation[0]= flScreenWidth-posX-flCatWidth;
+            }
+            val= Math.abs(tab_pixels_translation[0])*abs_ay/abs_ax;
+
+            if(ay<0) {
+                if(val>=posY){
+                    tab_pixels_translation[1]=-posY;
+                }
+                else tab_pixels_translation[1]=-val;
+
+            }
+            else if(ay>0){
+                if((posY+val)>=intCatBottom){
+                    tab_pixels_translation[1]= flScreenHeight-posY-flCatHeight*2;
+                }
+                else tab_pixels_translation[1]=val;
+            }
+            else tab_pixels_translation[1]=val;
+
+        }
+        else{
+            if(ax>0){
+                tab_pixels_translation[0]= -posX;
+            }
+            else if(ax==0){
+                tab_pixels_translation[0]= 0;
+            }
+            else{
+                tab_pixels_translation[0]= flScreenWidth-posX-flCatWidth;
+            }
+            if(ay>0){
+                tab_pixels_translation[1]= flScreenHeight-posY-flCatHeight*2;
+            }
+            else if(ay==0){
+                tab_pixels_translation[1]= 0;
+            }
+            else{
+                tab_pixels_translation[1]=  -posY;
+            }
+        }
+        translation= (int) tab_pixels_translation[0];
+        droite= (int) (flScreenWidth-posX-flCatWidth);
+        gauche=-ivCat.getX();
+        fcty=Math.abs(tab_pixels_translation[1])*abs_ax/abs_ay;
+        return tab_pixels_translation;
+
+    }
+
 }
