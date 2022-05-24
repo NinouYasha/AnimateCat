@@ -1,8 +1,8 @@
 package com.example.animatecat.interpolarCustom;
 
 public class MyBounceInterpolator implements android.view.animation.Interpolator {
-    private double mAmplitude = 2;
-    private double mFrequency = 10;
+    private double mAmplitude = 1;
+    private double mFrequency = 1.571;
 
 
     public MyBounceInterpolator() {
@@ -18,13 +18,13 @@ public class MyBounceInterpolator implements android.view.animation.Interpolator
     }
 
     public float getPixelsMoveX(float transX,float maxTransX,boolean firstBounce){
-        if(firstBounce) return -transX/maxTransX*100;
-        else return transX/maxTransX*100;
+        if(firstBounce) return -transX/maxTransX*300;
+        else return transX/maxTransX*300;
     }
 
     public float getPixelsMoveY(float transY,float maxTransY,boolean firstBounce){
-        if(firstBounce) return -transY/maxTransY*100;
-        else return transY/maxTransY*100;
+        if(firstBounce) return -transY/maxTransY*300;
+        else return transY/maxTransY*300;
     }
 }
 

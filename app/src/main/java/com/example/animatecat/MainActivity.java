@@ -10,8 +10,10 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.view.animation.BounceInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -64,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float flCatWidth;
     private MyAccelerateInterpolar myAccelerateInterpolar;
     private MyBounceInterpolator myFirstBounceInterpolator;
-    private MyBounceInterpolator mySecondInterpolator;
+    private MyAccelerateInterpolar mySecondInterpolator;
     private int intPreviousInclination;
     private int intCurrentInclination;
     private float flMoveToDistance;
@@ -73,12 +75,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int intCatRight;
     private int intCatBottom;
     private Toast toastCatEdge;
-    private boolean boolCatEdge;
+    private boolean boolCurrentCatEdge;
+    private boolean boolPreviousCatEdge;
+    private float flPreviousEdgePosX;
+    private float flPreviousEdgePosY;
     private boolean booldCatLoaded;
     Timer timer;
     private boolean boolTimerTilt;
     private boolean boolAngleChanged;
     private boolean boolCatAnimated;
+    private boolean boolBounce;
 
     //test
     int translation;
@@ -118,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // Message chat au bord
         toastCatEdge = Toast.makeText(this, movingCat.getName()+" va tomber !", Toast.LENGTH_SHORT);
-        boolCatEdge =false;
+        boolCurrentCatEdge =false;
 
         // animation
         ivCat.animate().setListener(this);
@@ -136,6 +142,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         boolAngleChanged =false;
         boolTimerTilt=false;
         boolCatAnimated=false;
+        boolBounce=false;
 
 
     }
@@ -145,6 +152,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume() {
         super.onResume();
+
 
         sensorManager.registerListener(this,sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),sensorManager.SENSOR_DELAY_GAME);
 
@@ -172,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double norm_Of_g;
         float z_normalise;
 
-        if(booldCatLoaded) {
+        if(booldCatLoaded && boolBounce==false) {
 
             // Recuperer angle
             norm_Of_g = Math.sqrt(sensorEvent.values[0] * sensorEvent.values[0] + sensorEvent.values[1] * sensorEvent.values[1] + sensorEvent.values[2] * sensorEvent.values[2]);
@@ -185,10 +193,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if ((intCurrentInclination != intPreviousInclination)) {
                 boolAngleChanged =true;
 
+
                 if (boolTimerTilt == true) {
 
                     if((intCurrentInclination==0)&&boolCatAnimated==true){
-                        ivCat.animate().cancel();
+
                         boolCatAnimated=false;
                     }
                     else if(intCurrentInclination!=0) {
@@ -199,12 +208,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                         boolCatAnimated = true;
 
-                        bt.setText("ANGLE");
-
                         float[] tabPixelsTranslation = getPixelsTranslations(sensorEvent.values[0], sensorEvent.values[1], ivCat.getX(), ivCat.getY());
+
+                        flPreviousEdgePosX= ivCat.getX();
+                        flPreviousEdgePosY=ivCat.getY();
+
                         ivCat.animate().translationYBy(tabPixelsTranslation[1]);
                         ivCat.animate().translationXBy(tabPixelsTranslation[0]);
-
 
                         myAccelerateInterpolar = new MyAccelerateInterpolar(Math.abs(intCurrentInclination) * 0.1f,tabPixelsTranslation[0],tabPixelsTranslation[1]);
 
@@ -250,8 +260,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
+
     @Override
     public void onAnimationStart(Animator animator) {
+        if(animator.getInterpolator()== myFirstBounceInterpolator) {
+           bt.setText("1");
+        }
+        if(animator.getInterpolator()== mySecondInterpolator) {
+            bt.setText("2");
+        }
+        if(animator.getInterpolator()== myAccelerateInterpolar) {
+            Log.w("tag","myAccelerateInterpolar");
+        }
 
     }
 
@@ -260,45 +280,39 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAnimationEnd(Animator animator) {
         float posX = ivCat.getX();
         float posY = ivCat.getY();
+        double transX=0;
+        double transY=0;
+        boolean boolMargeX;
+        boolean boolMargeY;
+        boolean boolExtremite;
+
+        if(animator.getInterpolator()==mySecondInterpolator){
+            boolBounce=false;
+        }
 
         if(animator.getInterpolator()== myFirstBounceInterpolator){
-            Toast.makeText(this, "dine", Toast.LENGTH_SHORT).show();
-            mySecondInterpolator =new MyBounceInterpolator();
-            float transX = mySecondInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,false);
-            float transY = mySecondInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransY(),flScreenHeight,false);
-            ivCat.animate().setInterpolator(mySecondInterpolator);
-            ivCat.animate().translationXBy(transX);
-            ivCat.animate().translationYBy(transY);
-            ivCat.animate().setDuration(1000);
-            ivCat.animate().start();
+            mySecondInterpolator =new MyAccelerateInterpolar( );
+            transX = myFirstBounceInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,false);
+            transY = myFirstBounceInterpolator.getPixelsMoveY(myAccelerateInterpolar.getTransY(),flScreenHeight,false);
+            activateSecondInterpolar(transX,transY);
+
         }
 
         if(animator.getInterpolator()==myAccelerateInterpolar){
-            if(posX==CAT_LEFT||posX==intCatRight||posY==intCatBottom||posY==CAT_TOP){
-                myFirstBounceInterpolator =new MyBounceInterpolator();
-                float transX = myFirstBounceInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,true);
-                float transY = myFirstBounceInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransY(),flScreenHeight,true);
-                ivCat.animate().setInterpolator(myFirstBounceInterpolator);
-                ivCat.animate().translationXBy(transX);
-                ivCat.animate().translationYBy(transY);
-                ivCat.animate().setDuration(1000);
-                ivCat.animate().start();
+            boolMargeX = (flPreviousEdgePosX==CAT_LEFT&&posX==CAT_LEFT)||(flPreviousEdgePosX==intCatRight&&posX==intCatRight);
+            boolMargeY=(flPreviousEdgePosY==CAT_TOP&&posY==CAT_TOP)||(flPreviousEdgePosY==intCatBottom&&posY==intCatBottom);
+            boolExtremite=posX==CAT_LEFT||posX==intCatRight||posY==CAT_TOP||posY==intCatBottom;
+
+            if(boolMargeX==false||boolMargeY==false){
+                if(boolExtremite==true){
+                    boolBounce=true;
+                    myFirstBounceInterpolator =new MyBounceInterpolator();
+                    transX = myFirstBounceInterpolator.getPixelsMoveX(myAccelerateInterpolar.getTransX(),flScreenWidth,true);
+                    transY = myFirstBounceInterpolator.getPixelsMoveY(myAccelerateInterpolar.getTransY(),flScreenHeight,true);
+                    activateFirstInterpolar(transX,transY);
+                }
             }
-
         }
-//            if((intPositionX==CAT_LEFT || intPositionX== intCatRight)&&!boolCatEdge){
-//                toastCatEdge.show();
-//                boolCatEdge =true;
-//            }
-//            else if(boolCatEdge){
-//                toastCatEdge.cancel();
-//                boolCatEdge =false;
-//            }
-//
-//        } //if(ivCat.getAnimation().getInterpolator()== myAccelerateInterpolar)
-
-
-
 
     }
 
@@ -404,6 +418,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         gauche=-ivCat.getX();
         fcty=Math.abs(tab_pixels_translation[1])*abs_ax/abs_ay;
         return tab_pixels_translation;
+
+    }
+
+    public void activateFirstInterpolar(double transX,double transY){
+        ivCat.animate().setInterpolator(myFirstBounceInterpolator);
+        ivCat.animate().translationXBy((float) transX);
+        ivCat.animate().translationYBy((float) transY);
+        ivCat.animate().setDuration(500);
+        ivCat.animate().start();
+    }
+
+    public void activateSecondInterpolar(double transX,double transY){
+        ivCat.animate().setInterpolator(mySecondInterpolator);
+        ivCat.animate().translationXBy((float) transX);
+        ivCat.animate().translationYBy((float) transY);
+        ivCat.animate().setDuration(500);
+        ivCat.animate().start();
 
     }
 
